@@ -1,0 +1,316 @@
+<!--
+MIT License
+
+Copyright (c) 2024 Yamir Encarnacion
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yamir's Trading EV Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    body {
+      font-family: 'Lato', sans-serif;
+      background-color: #121212;
+      color: white;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .calculator {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #1e1e1e;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .calculator h2 {
+      margin-bottom: 20px;
+    }
+
+    .calculator label {
+      display: block;
+      text-align: left;
+      margin: 10px 0 5px;
+      font-weight: bold;
+    }
+
+    .calculator input[type="number"] {
+      width: calc(100% - 24px);
+      margin: 5px 0;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: #2a2a2a;
+      color: white;
+      outline: none;
+      font-weight: bold;
+      box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+    }
+
+    .calculator button {
+      width: 100%;
+      margin: 20px 0;
+      padding: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .calculator button:hover {
+      background-color: #218838;
+    }
+
+    .result, .yaml-output {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: left;
+      background-color: #292929;
+      color: white;
+      word-break: break-word;
+      white-space: pre-wrap; /* Added this line */
+    }
+
+    .trade-message {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .copy-button {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .copy-button:hover {
+      background-color: #0069d9;
+    }
+
+    .error-message {
+      margin-top: 10px;
+      color: red;
+      font-weight: bold;
+    }
+
+    @media screen and (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+
+      .calculator {
+        padding: 15px;
+      }
+
+      .calculator input, .calculator button {
+        font-size: 16px;
+        padding: 10px;
+      }
+    }
+
+    /* Style for radio buttons */
+    .trade-type {
+      text-align: left;
+      margin: 10px 0;
+    }
+
+    .trade-type label {
+      display: inline-block;
+      margin-right: 20px;
+      font-weight: normal;
+    }
+
+    .trade-type input {
+      margin-right: 5px;
+    }
+</style>
+</head>
+<body>
+<div class="calculator">
+    <h2>Trading EV Calculator</h2>
+    <div class="trade-type">
+        <label><input type="radio" name="tradeType" value="long" checked> Long</label>
+        <label><input type="radio" name="tradeType" value="short"> Short</label>
+    </div>
+
+    <label for="entryPrice">Entry Price:</label>
+    <input type="number" id="entryPrice" placeholder="Enter Entry Price" step="0.01">
+
+    <label for="stopPrice">Stop Price:</label>
+    <input type="number" id="stopPrice" placeholder="Enter Stop Price" step="0.01">
+
+    <label for="targetPrice">Target Price:</label>
+    <input type="number" id="targetPrice" placeholder="Enter Target Price" step="0.01">
+
+    <label for="probability">Probability of Winning (%):</label>
+    <input type="number" id="probability" placeholder="Enter Probability" step="1" max="100" min="0" value="60">
+
+    <button onclick="calculateEV()">Calculate Expected Value</button>
+
+    <div class="error-message" id="error-message"></div>
+
+    <div class="result" id="result" style="display:none;"></div>
+    <div class="trade-message" id="trade-message" style="display:none;"></div>
+    <div class="yaml-output" id="yaml-output" style="display:none;"></div>
+    <button class="copy-button" id="copy-button" style="display:none;" onclick="copyToClipboard()">Copy to Clipboard</button>
+</div>
+
+<script>
+    function calculateEV() {
+        const tradeTypeElements = document.getElementsByName('tradeType');
+        let tradeType;
+        for (const elem of tradeTypeElements) {
+            if (elem.checked) {
+                tradeType = elem.value;
+                break;
+            }
+        }
+
+        const entryPrice = parseFloat(document.getElementById('entryPrice').value);
+        const stopPrice = parseFloat(document.getElementById('stopPrice').value);
+        const targetPrice = parseFloat(document.getElementById('targetPrice').value);
+        const probability = parseFloat(document.getElementById('probability').value);
+
+        const errorMessage = document.getElementById('error-message');
+        errorMessage.textContent = '';
+
+        if (isNaN(entryPrice) || isNaN(stopPrice) || isNaN(targetPrice) || isNaN(probability)) {
+            errorMessage.textContent = 'Please enter valid numbers for all inputs.';
+            return;
+        }
+
+        if (probability < 0 || probability > 100) {
+            errorMessage.textContent = 'Probability must be between 0 and 100.';
+            return;
+        }
+
+        let risk, reward;
+
+        if (tradeType === 'long') {
+            risk = entryPrice - stopPrice;
+            reward = targetPrice - entryPrice;
+        } else {
+            risk = stopPrice - entryPrice;
+            reward = entryPrice - targetPrice;
+        }
+
+        if (risk <= 0 || reward <= 0) {
+            errorMessage.textContent = 'Risk and Reward must be positive values. Please check your prices.';
+            return;
+        }
+
+        const probabilityLoss = 100 - probability;
+        const expectedValue = (probability / 100) * reward - (probabilityLoss / 100) * risk;
+
+        const resultElement = document.getElementById('result');
+        resultElement.style.display = 'block';
+        resultElement.textContent = `Expected Value: ${expectedValue.toFixed(2)}`;
+
+        const tradeMessageElement = document.getElementById('trade-message');
+        tradeMessageElement.style.display = 'block';
+
+        let tradeMessage = '';
+
+        if (expectedValue >= 3.8) {
+            tradeMessage = 'This is an A+ trade.';
+        } else if (expectedValue >= 2.2) {
+            tradeMessage = 'This is an A trade.';
+        } else if (expectedValue >= 1.4) {
+            tradeMessage = 'This is a B trade.';
+        } else if (expectedValue >= 1.0) {
+            tradeMessage = 'This is a C trade.';
+        } else if (expectedValue >= 0) {
+            tradeMessage = 'This is a D trade.';
+        } else {
+            tradeMessage = 'This trade is not worth taking.';
+        }
+
+        tradeMessageElement.textContent = tradeMessage;
+
+        // Prepare YAML output with pretty print
+        const yamlData = `
+Trade Details:
+  Trade Type: ${tradeType}
+  Entry Price: ${entryPrice}
+  Stop Price: ${stopPrice}
+  Target Price: ${targetPrice}
+  Probability of Winning: ${probability}%
+Calculations:
+  Risk: ${risk.toFixed(2)}
+  Reward: ${reward.toFixed(2)}
+  Expected Value: ${expectedValue.toFixed(2)}
+  Trade Assessment: "${tradeMessage}"
+`;
+
+        const yamlOutputElement = document.getElementById('yaml-output');
+        yamlOutputElement.style.display = 'block';
+        yamlOutputElement.textContent = yamlData.trim();
+
+        const copyButton = document.getElementById('copy-button');
+        copyButton.style.display = 'block';
+    }
+
+    function copyToClipboard() {
+        const yamlOutputElement = document.getElementById('yaml-output');
+        const textarea = document.createElement('textarea');
+        textarea.value = yamlOutputElement.textContent;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+        alert('YAML data copied to clipboard!');
+    }
+
+    // Ensure Enter key calculates EV
+    document.querySelectorAll('.calculator input').forEach(input => {
+        input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                calculateEV();
+            }
+        });
+    });
+</script>
+</body>
+</html>
